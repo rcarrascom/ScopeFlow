@@ -59,3 +59,7 @@ calls - the app is fully self-contained and safe to run offline.
 - `generate_mock_data.py` - dataset generator (run once, commit the output)
 - `mock_data.py` - generated dataset (do not hand-edit)
 - `templates/` - the dashboard UI and the mock CRM record page
+
+## Author
+
+Robinson Carrasco (RC) - [GitHub](https://github.com/rcarrascom) - [LinkedIn](https://www.linkedin.com/in/robinson-martinez-a92b5274/)
