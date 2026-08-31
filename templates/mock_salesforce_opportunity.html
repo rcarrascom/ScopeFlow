@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>{{ project.Name }} | Salesforce</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; }
+  .text-xxs { font-size: 0.65rem; }
+</style>
+</head>
+<body class="bg-[#F3F3F3] text-[#181818] min-h-screen">
+
+  <!-- Generic CRM top nav chrome, styled to resemble a typical Salesforce Lightning header -->
+  <div class="bg-[#16325C] text-white flex items-center px-4 py-2 gap-4">
+    <div class="grid grid-cols-3 gap-0.5 w-4 h-4 shrink-0">
+      <span class="bg-white/70 w-1 h-1"></span><span class="bg-white/70 w-1 h-1"></span><span class="bg-white/70 w-1 h-1"></span>
+      <span class="bg-white/70 w-1 h-1"></span><span class="bg-white/70 w-1 h-1"></span><span class="bg-white/70 w-1 h-1"></span>
+      <span class="bg-white/70 w-1 h-1"></span><span class="bg-white/70 w-1 h-1"></span><span class="bg-white/70 w-1 h-1"></span>
+    </div>
+    <span class="font-bold text-sm">Salesforce</span>
+    <span class="text-white/50 text-sm">|</span>
+    <span class="text-sm text-white/90">Sales</span>
+    <div class="flex-1"></div>
+    <input placeholder="Search Salesforce" class="bg-[#0B2447] border border-white/20 rounded px-3 py-1 text-xs w-64 text-white placeholder-white/40 outline-none">
+    <div class="w-6 h-6 rounded-full bg-[#54698D] flex items-center justify-center text-xs font-bold shrink-0">AR</div>
+  </div>
+
+  <div class="px-6 py-2 text-xs text-[#706E6B] bg-white border-b border-[#DDDBDA]">
+    Opportunities &nbsp;›&nbsp; <span class="text-[#181818] font-bold">{{ project.Name }}</span>
+  </div>
+
+  <div class="max-w-5xl mx-auto p-6">
+    <a href="/ScopeFlow" class="text-xs text-[#0176D3] hover:underline font-bold">&larr; Back to ScopeFlow</a>
+
+    <div class="bg-white border border-[#DDDBDA] rounded mt-3 shadow-sm">
+      <div class="p-4 border-b border-[#DDDBDA]">
+        <div class="text-xxs text-[#706E6B] uppercase font-bold mb-1">Opportunity</div>
+        <h1 class="text-xl font-bold text-[#181818]">{{ project.Name }}</h1>
+        <div class="flex gap-8 mt-3 text-sm">
+          <div><div class="text-xxs text-[#706E6B] uppercase font-bold">Amount</div><div class="font-bold">${{ project.DealValue|money }}</div></div>
+          <div><div class="text-xxs text-[#706E6B] uppercase font-bold">Close Date</div><div class="font-bold">{{ project.TargetDeliveryDate }}</div></div>
+          <div><div class="text-xxs text-[#706E6B] uppercase font-bold">Stage</div><div class="font-bold">{{ project.Stage }}</div></div>
+          <div><div class="text-xxs text-[#706E6B] uppercase font-bold">Probability</div><div class="font-bold">{{ project.Probability }}%</div></div>
+        </div>
+      </div>
+
+      <!-- Stage path, styled after Salesforce's Opportunity path component -->
+      <div class="flex text-xxs border-b border-[#DDDBDA] overflow-x-auto">
+        {% set stages = ["1 - Lead", "2 - Discovery Call", "3 - Proposal Sent", "4 - Scope Call", "5 - Negotiation", "6 - Closed Won", "7 - Closed Lost"] %}
+        {% for s in stages %}
+        <div class="flex-1 text-center py-2 px-2 whitespace-nowrap {{ 'bg-[#0176D3] text-white font-bold' if s == project.Stage else 'bg-[#F3F3F3] text-[#706E6B]' }} border-r border-white">{{ s }}</div>
+        {% endfor %}
+      </div>
+
+      <div class="grid grid-cols-2 gap-x-8 gap-y-3 p-4 text-sm">
+        <div><div class="text-xxs text-[#706E6B] uppercase font-bold">Account Name</div><div>{{ project.Client.Name }}</div></div>
+        <div><div class="text-xxs text-[#706E6B] uppercase font-bold">Lead Collaborator (Owner)</div><div>{{ project.LeadCollaborator.Name }}</div></div>
+        <div><div class="text-xxs text-[#706E6B] uppercase font-bold">Retainer Value (Monthly)</div><div>${{ project.RetainerValue__c|money }}</div></div>
+        <div><div class="text-xxs text-[#706E6B] uppercase font-bold">Collaborators</div><div>{{ collaborators|join(', ') if collaborators else '--' }}</div></div>
+        <div><div class="text-xxs text-[#706E6B] uppercase font-bold">Lead Source</div><div>{{ project.LeadSource }}</div></div>
+        <div><div class="text-xxs text-[#706E6B] uppercase font-bold">Contract Status</div><div>{{ project.ContractStatus }}</div></div>
+        <div><div class="text-xxs text-[#706E6B] uppercase font-bold">Created Date</div><div>{{ project.CreatedDate[:10] }}</div></div>
+        <div><div class="text-xxs text-[#706E6B] uppercase font-bold">Last Modified</div><div>{{ project.LastModifiedDate[:10] }}</div></div>
+        <div class="col-span-2"><div class="text-xxs text-[#706E6B] uppercase font-bold">Next Step</div><div>{{ project.NextStep }}</div></div>
+        {% if project.ClosedReason__c %}
+        <div class="col-span-2"><div class="text-xxs text-[#706E6B] uppercase font-bold">Closed Reason</div><div>{{ project.ClosedReason__c }}</div></div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="bg-white border border-[#DDDBDA] rounded mt-4 shadow-sm">
+      <div class="p-3 border-b border-[#DDDBDA] font-bold text-sm">Scope Calls (1)</div>
+      {% if scope_call %}
+      <table class="w-full text-xs">
+        <thead class="bg-[#F3F3F3] text-[#706E6B]">
+          <tr class="text-left">
+            <th class="p-2">Call Status</th><th class="p-2">Risk Level</th><th class="p-2">Blocker</th>
+            <th class="p-2">Outcome</th><th class="p-2">Proposal Status</th><th class="p-2">Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="border-t border-[#DDDBDA]">
+            <td class="p-2">{{ scope_call.CallStatus }}</td>
+            <td class="p-2">{{ scope_call.RiskLevel }}</td>
+            <td class="p-2">{{ scope_call.BlockerType }}</td>
+            <td class="p-2">{{ scope_call.Outcome }}</td>
+            <td class="p-2">{{ scope_call.ProposalStatus }}</td>
+            <td class="p-2">{{ scope_call.CallNotes or '--' }}</td>
+          </tr>
+        </tbody>
+      </table>
+      {% else %}
+      <div class="p-4 text-xs text-[#706E6B]">No Scope Call record linked.</div>
+      {% endif %}
+    </div>
+
+    <p class="text-xxs text-[#706E6B] mt-6 text-center">This is a simulated CRM record view for demo purposes - no real Salesforce connection.</p>
+  </div>
+</body>
+</html>

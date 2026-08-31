@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ScopeFlow</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%233B82F6'/%3E%3Cstop offset='1' stop-color='%231D4ED8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='18' fill='url(%23g)'/%3E%3Cpath d='M28 65 L50 30 L72 65' fill='none' stroke='%23FFFFFF' stroke-width='9' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        bgDark: '#0A0E17', bgPanel: '#111826', inputBg: '#1A2334',
+        borderColor: '#28324A', hoverBg: '#212C42',
+        textBright: '#EDF1FA', textMuted: '#8B96AE',
+        accentBlue: '#3B82F6', accentBlueDark: '#1D4ED8', accentCyan: '#38BDF8',
+        accentGreen: '#22C55E', accentRed: '#EF4444',
+      }
+    }
+  }
+}
+</script>
+<style>
+  .text-xxs { font-size: 0.65rem; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: #28324A; border-radius: 4px; }
+  body {
+    background: radial-gradient(circle at 15% 0%, #0F1830 0%, #0A0E17 55%);
+  }
+  .panel-elevated {
+    box-shadow: 0 4px 24px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.03);
+  }
+  .btn-primary {
+    background: linear-gradient(180deg, #3B82F6, #2563EB);
+    box-shadow: 0 2px 8px rgba(59,130,246,0.35);
+  }
+  .btn-primary:hover { background: linear-gradient(180deg, #4C8DFB, #3B82F6); }
+</style>
+</head>
+<body class="bg-bgDark text-textMuted font-sans h-screen flex flex-col p-4 overflow-hidden relative">
+
+  <!-- Mock CRM Connect Gate -->
+  <div id="sf-login-gate" class="fixed inset-0 bg-bgDark z-[100] flex items-center justify-center">
+    <div class="bg-bgPanel border border-borderColor rounded-lg panel-elevated p-8 w-96 text-center">
+      <svg viewBox="0 0 100 100" width="40" height="40" class="mx-auto mb-3 rounded">
+        <rect width="100" height="100" rx="18" fill="#3B82F6"/>
+        <path d="M28 65 L50 30 L72 65" fill="none" stroke="#FFFFFF" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <h1 class="text-textBright font-bold text-lg mb-1">ScopeFlow</h1>
+      <p class="text-textMuted text-xs mb-6">Connect your CRM to load your pipeline.</p>
+      <button id="sf-connect-btn" onclick="connectToCrm()" class="w-full flex items-center justify-center gap-2 bg-white text-[#032D60] font-bold text-sm px-4 py-2.5 rounded hover:bg-gray-100 transition-colors">
+        <svg width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#00A1E0"/></svg>
+        Connect to Salesforce
+      </button>
+      <p class="text-textMuted text-xxs mt-4">Demo mode - this simulates a CRM login, no real credentials required.</p>
+    </div>
+  </div>
+
+  <div class="flex justify-between items-center mb-1.5 shrink-0 flex-wrap gap-y-1">
+    <div class="flex items-center space-x-2 text-sm whitespace-nowrap">
+      <span class="font-bold text-textBright text-lg mr-1 flex items-center shrink-0">
+        <svg viewBox="0 0 100 100" width="22" height="22" class="mr-2 rounded shrink-0">
+          <rect width="100" height="100" rx="18" fill="#3B82F6"/>
+          <path d="M28 65 L50 30 L72 65" fill="none" stroke="#FFFFFF" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        ScopeFlow
+      </span>
+      <span class="font-bold text-textBright">Status:</span>
+      <select id="filter-status" onchange="applyFilters()" class="bg-inputBg border border-borderColor text-textBright text-xs px-2 py-1 rounded outline-none focus:border-accentBlue">
+        <option value="Active">Active / Open</option>
+        <option value="All">All Projects</option>
+        <option value="Closed">Closed Won/Lost Only</option>
+      </select>
+      <span class="font-bold text-textBright ml-1">Timeline:</span>
+      <select id="filter-timeline" onchange="applyFilters()" class="bg-inputBg border border-borderColor text-textBright text-xs px-2 py-1 rounded outline-none focus:border-accentBlue">
+        <option value="All Time">All Time</option>
+        <option value="Past Due">Past Due</option>
+        <option value="Delivering This Month">Delivering This Month</option>
+        <option value="Delivering Next Month">Delivering Next Month</option>
+      </select>
+      <span class="font-bold text-textBright ml-1">Stage:</span>
+      <select id="filter-stage" onchange="applyFilters()" class="bg-inputBg border border-borderColor text-textBright text-xs px-2 py-1 rounded outline-none focus:border-accentBlue">
+        <option value="All">All Stages</option>
+      </select>
+      <span class="font-bold text-textBright ml-1">Source:</span>
+      <select id="filter-source" onchange="applyFilters()" class="bg-inputBg border border-borderColor text-textBright text-xs px-2 py-1 rounded outline-none focus:border-accentBlue">
+        <option value="All">All Sources</option>
+      </select>
+    </div>
+
+    <div class="flex items-center space-x-1.5 relative shrink-0 whitespace-nowrap">
+      <button onclick="setViewSelf()" class="bg-transparent border border-borderColor text-textBright px-2 py-1 rounded hover:bg-hoverBg text-xs">👤 My Pipeline</button>
+      <button onclick="openCollaboratorLookup()" title="Look Up Collaborator" class="bg-inputBg border border-borderColor text-textBright px-2 py-1 rounded hover:bg-hoverBg text-xs">🔎 Look Up</button>
+      <button onclick="forceRefresh()" class="bg-transparent border border-borderColor text-textBright px-2 py-1 rounded hover:bg-hoverBg text-xs" title="Refresh">🔄</button>
+      <button onclick="openColumnSettings()" class="bg-transparent border border-borderColor text-textBright px-2 py-1 rounded hover:bg-hoverBg text-xs" title="Column Settings">⚙️ Columns</button>
+      <button onclick="disconnectFromCrm()" class="bg-transparent border border-borderColor text-accentRed px-2 py-1 rounded hover:bg-hoverBg text-xs" title="Disconnect from Salesforce">🔌 Disconnect</button>
+      <div class="relative">
+        <button onclick="toggleExportMenu()" class="btn-primary text-white font-bold text-xs px-3 py-1 rounded transition-colors">⬇ Export ▾</button>
+        <div id="export-menu" class="hidden absolute right-0 top-full mt-1 bg-bgPanel border border-borderColor rounded panel-elevated w-36 z-50 text-xs overflow-hidden">
+          <button onclick="exportAs('csv')" class="w-full text-left px-3 py-2 text-textBright hover:bg-hoverBg">CSV</button>
+          <button onclick="exportAs('json')" class="w-full text-left px-3 py-2 text-textBright hover:bg-hoverBg">JSON</button>
+          <button onclick="exportAs('markdown')" class="w-full text-left px-3 py-2 text-textBright hover:bg-hoverBg">Markdown Table</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex justify-between items-center mb-2 shrink-0 gap-3 flex-wrap gap-y-1">
+    <input id="search-input" oninput="applyFilters()" placeholder="🔎 Search: Client, Project, Collaborator, or Project ID..." class="flex-1 max-w-md bg-inputBg border border-borderColor text-textBright text-xs px-3 py-1.5 rounded outline-none focus:border-accentBlue">
+    <div class="flex items-center gap-2 whitespace-nowrap">
+      <button onclick="openClosedWonBrief()" class="bg-inputBg border border-borderColor text-textBright px-2 py-1 rounded hover:bg-hoverBg text-xs font-bold">🏆 Closed Won Brief</button>
+      <button onclick="openStageBreakdown()" class="bg-inputBg border border-borderColor text-textBright px-2 py-1 rounded hover:bg-hoverBg text-xs font-bold">📈 Stage Breakdown</button>
+      <button onclick="openAnalytics()" class="bg-inputBg border border-borderColor text-textBright px-2 py-1 rounded hover:bg-hoverBg text-xs font-bold">📊 Pipeline Analytics</button>
+    </div>
+    <div class="text-xs text-textMuted flex items-center gap-4 shrink-0">
+      <span id="view-label"></span>
+      <span class="whitespace-nowrap">Total Projects: <span id="record-count" class="text-accentBlue font-bold">0</span></span>
+    </div>
+  </div>
+
+  <div id="bulk-action-bar" class="hidden justify-between items-center mb-2 shrink-0 bg-inputBg border border-accentBlue rounded px-3 py-2 text-xs">
+    <span><span id="bulk-selected-count" class="font-bold text-textBright">0</span> selected</span>
+    <div class="flex items-center gap-2">
+      <span class="text-textMuted">Set Stage:</span>
+      <select id="bulk-stage-select" class="bg-bgPanel border border-borderColor text-textBright px-2 py-1 rounded outline-none focus:border-accentBlue"></select>
+      <button onclick="applyBulkStage()" class="btn-primary text-white font-bold px-3 py-1 rounded transition-colors">Apply</button>
+      <button onclick="clearSelection()" class="bg-transparent border border-borderColor text-textBright px-3 py-1 rounded hover:bg-hoverBg">Clear</button>
+    </div>
+  </div>
+
+  <div class="flex-1 flex overflow-hidden gap-3">
+    <div class="flex-1 overflow-auto rounded-lg border border-borderColor bg-bgPanel panel-elevated">
+      <table class="w-full text-xs">
+        <thead class="bg-bgPanel sticky top-0">
+          <tr class="text-left">
+            <th class="p-2 border-b border-borderColor"><input type="checkbox" id="select-all-checkbox" onclick="toggleSelectAll(this)"></th>
+            <th class="p-2 font-bold border-b border-borderColor">Client</th>
+            <th class="p-2 font-bold border-b border-borderColor">Service Type</th>
+            <th class="p-2 font-bold border-b border-borderColor text-right">Deal Value</th>
+            <th class="p-2 font-bold border-b border-borderColor text-right">Retainer</th>
+            <th class="p-2 font-bold border-b border-borderColor">Stage</th>
+            <th class="p-2 font-bold border-b border-borderColor">Target Delivery</th>
+            <th class="p-2 font-bold border-b border-borderColor">Risk</th>
+            <th class="p-2 font-bold border-b border-borderColor">Call Status</th>
+            <th class="p-2 font-bold border-b border-borderColor col-source hidden">Lead Source</th>
+            <th class="p-2 font-bold border-b border-borderColor col-contract hidden">Contract Status</th>
+            <th class="p-2 font-bold border-b border-borderColor col-proposal hidden">Proposal Status</th>
+            <th class="p-2 font-bold border-b border-borderColor">Next Step</th>
+          </tr>
+        </thead>
+        <tbody id="project-list"></tbody>
+      </table>
+    </div>
+
+    <div id="side-panel" class="hidden w-[420px] shrink-0 bg-bgPanel border border-borderColor rounded-lg panel-elevated overflow-y-auto p-4">
+      <div class="flex justify-between items-start mb-1">
+        <h2 id="panel-title" class="text-textBright font-bold text-base"></h2>
+        <button onclick="closePanel()" class="text-textMuted hover:text-textBright">✕</button>
+      </div>
+      <a id="view-in-sf-link" href="#" target="_blank" class="text-accentBlue text-xs hover:underline font-bold inline-block mb-3">🔗 View in Salesforce</a>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block text-textMuted mb-1">Stage</label>
+          <select id="edit-stage" class="w-full bg-inputBg border border-borderColor text-textBright px-2 py-1 rounded outline-none focus:border-accentBlue"></select>
+        </div>
+        <div>
+          <label class="block text-textMuted mb-1">Contract Status</label>
+          <select id="edit-contract-status" class="w-full bg-inputBg border border-borderColor text-textBright px-2 py-1 rounded outline-none focus:border-accentBlue">
+            <option>Not Sent</option><option>Sent</option><option>Signed</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-textMuted mb-1">Target Delivery Date</label>
+          <input id="edit-delivery-date" type="date" class="w-full bg-inputBg border border-borderColor text-textBright px-2 py-1 rounded outline-none focus:border-accentBlue">
+        </div>
+        <div>
+          <label class="block text-textMuted mb-1">Next Step</label>
+          <textarea id="edit-next-step" rows="2" class="w-full bg-inputBg border border-borderColor text-textBright px-2 py-1 rounded outline-none focus:border-accentBlue"></textarea>
+        </div>
+
+        <button onclick="openQualification()" class="w-full bg-inputBg border border-borderColor text-textBright px-3 py-1.5 rounded hover:bg-hoverBg font-bold">📋 View Qualification Checklist</button>
+
+        <div class="border-t border-borderColor pt-3 mt-3">
+          <h3 class="text-textBright font-bold mb-2">Scope Call</h3>
+          <div class="space-y-2">
+            <div>
+              <label class="block text-textMuted mb-1">Call Status</label>
+              <select id="edit-call-status" class="w-full bg-inputBg border border-borderColor text-textBright px-2 py-1 rounded outline-none focus:border-accentBlue"></select>
+            </div>
+            <div>
+              <label class="block text-textMuted mb-1">Risk Level</label>
+              <select id="edit-risk-level" class="w-full bg-inputBg border border-borderColor text-textBright px-2 py-1 rounded outline-none focus:border-accentBlue">
+                <option>Green</option><option>Yellow</option><option>Red</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-textMuted mb-1">Blocker Type</label>
+              <select id="edit-blocker-type" class="w-full bg-inputBg border border-borderColor text-textBright px-2 py-1 rounded outline-none focus:border-accentBlue"></select>
+            </div>
+            <div>
+              <label class="block text-textMuted mb-1">Outcome</label>
+              <select id="edit-outcome" class="w-full bg-inputBg border border-borderColor text-textBright px-2 py-1 rounded outline-none focus:border-accentBlue"></select>
+            </div>
+            <div>
+              <label class="block text-textMuted mb-1">Proposal Status</label>
+              <select id="edit-proposal-status" class="w-full bg-inputBg border border-borderColor text-textBright px-2 py-1 rounded outline-none focus:border-accentBlue"></select>
+            </div>
+            <div>
+              <label class="block text-textMuted mb-1">Call Notes</label>
+              <textarea id="edit-call-notes" rows="3" class="w-full bg-inputBg border border-borderColor text-textBright px-2 py-1 rounded outline-none focus:border-accentBlue"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <button onclick="saveCurrent()" class="w-full btn-primary text-white font-bold px-3 py-2 rounded transition-colors mt-2">Save Changes</button>
+        <div id="save-status" class="text-center text-accentGreen font-bold"></div>
+        <button onclick="openProjectBrief()" class="w-full bg-inputBg border border-borderColor text-textBright px-3 py-1.5 rounded hover:bg-hoverBg font-bold mt-2">📄 Generate Project Brief</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Column Settings Modal -->
+  <div id="column-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-50 flex justify-center items-center">
+    <div class="bg-bgPanel border border-borderColor rounded-lg panel-elevated w-80 p-4">
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="text-textBright font-bold">Columns</h3>
+        <button onclick="closeColumnSettings()" class="text-textMuted hover:text-textBright">✕</button>
+      </div>
+      <div class="space-y-2 text-sm text-textBright">
+        <label class="flex items-center gap-2"><input type="checkbox" id="col-toggle-source" onchange="toggleColumn('source', this.checked)"> Lead Source</label>
+        <label class="flex items-center gap-2"><input type="checkbox" id="col-toggle-contract" onchange="toggleColumn('contract', this.checked)"> Contract Status</label>
+        <label class="flex items-center gap-2"><input type="checkbox" id="col-toggle-proposal" onchange="toggleColumn('proposal', this.checked)"> Proposal Status</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Closed Won Brief Modal -->
+  <div id="won-brief-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-50 flex justify-center items-center">
+    <div class="bg-bgPanel border border-borderColor rounded-lg panel-elevated w-3/4 max-w-2xl max-h-[85vh] flex flex-col">
+      <div class="flex justify-between items-center p-4 border-b border-borderColor">
+        <h3 class="text-textBright font-bold text-lg">🏆 Closed Won Brief</h3>
+        <button onclick="closeWonBrief()" class="text-textMuted hover:text-textBright">✕</button>
+      </div>
+      <div class="p-4 overflow-y-auto flex-1">
+        <div class="text-xs text-textMuted mb-2" id="won-brief-scope"></div>
+        <div class="flex items-center gap-3 mb-3 text-xs">
+          <span class="font-bold text-textBright">Year:</span>
+          <select id="won-brief-year" onchange="renderWonBriefChart()" class="bg-inputBg border border-borderColor text-textBright px-2 py-1 rounded outline-none focus:border-accentBlue"></select>
+        </div>
+        <div class="bg-inputBg border border-borderColor rounded p-4 text-center mb-4">
+          <div id="won-brief-total" class="text-accentGreen font-bold text-3xl"></div>
+          <div id="won-brief-count" class="text-textMuted text-xs mt-1"></div>
+        </div>
+        <h4 class="text-textBright font-bold mb-2 text-sm">Closed Won by Month</h4>
+        <div class="bg-inputBg border border-borderColor rounded p-2 mb-4"><canvas id="won-brief-chart" height="180"></canvas></div>
+        <h4 class="text-textBright font-bold mb-2 text-sm">Project Details <span id="won-brief-hint" class="text-textMuted font-normal">(click a bar above)</span></h4>
+        <div id="won-brief-details" class="space-y-1 text-xs max-h-48 overflow-y-auto"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stage Breakdown Modal -->
+  <div id="stage-breakdown-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-50 flex justify-center items-center">
+    <div class="bg-bgPanel border border-borderColor rounded-lg panel-elevated w-3/4 max-w-2xl max-h-[85vh] flex flex-col">
+      <div class="flex justify-between items-center p-4 border-b border-borderColor">
+        <h3 class="text-textBright font-bold text-lg">📈 Stage Breakdown</h3>
+        <button onclick="closeStageBreakdown()" class="text-textMuted hover:text-textBright">✕</button>
+      </div>
+      <div class="p-4 overflow-y-auto flex-1">
+        <div class="text-xs text-textMuted mb-2" id="stage-breakdown-scope"></div>
+        <div class="flex items-center gap-3 mb-3 text-xs">
+          <span class="font-bold text-textBright">View:</span>
+          <select id="stage-breakdown-view" onchange="renderStageBreakdownChart()" class="bg-inputBg border border-borderColor text-textBright px-2 py-1 rounded outline-none focus:border-accentBlue">
+            <option value="All">All Projects</option>
+            <option value="Open">Open Only</option>
+            <option value="6 - Closed Won">Closed Won</option>
+            <option value="7 - Closed Lost">Closed Lost</option>
+          </select>
+        </div>
+        <div class="bg-inputBg border border-borderColor rounded p-4 text-center mb-4">
+          <div id="stage-breakdown-total" class="text-accentBlue font-bold text-3xl"></div>
+          <div id="stage-breakdown-count" class="text-textMuted text-xs mt-1"></div>
+        </div>
+        <h4 class="text-textBright font-bold mb-2 text-sm">Projects by Stage</h4>
+        <div class="bg-inputBg border border-borderColor rounded p-2 mb-4"><canvas id="stage-breakdown-chart" height="180"></canvas></div>
+        <h4 class="text-textBright font-bold mb-2 text-sm">Project Details <span id="stage-breakdown-hint" class="text-textMuted font-normal">(click a bar above)</span></h4>
+        <div id="stage-breakdown-details" class="space-y-1 text-xs max-h-48 overflow-y-auto"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pipeline Analytics Modal -->
+  <div id="analytics-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-50 flex justify-center items-center">
+    <div class="bg-bgPanel border border-borderColor rounded-lg panel-elevated w-3/4 max-w-3xl max-h-[85vh] flex flex-col">
+      <div class="flex justify-between items-center p-4 border-b border-borderColor">
+        <h3 class="text-textBright font-bold text-lg">📊 Pipeline Analytics</h3>
+        <button onclick="closeAnalytics()" class="text-textMuted hover:text-textBright">✕</button>
+      </div>
+      <div id="analytics-content" class="p-4 overflow-y-auto text-sm flex-1"></div>
+    </div>
+  </div>
+
+  <!-- Project Brief Modal -->
+  <div id="brief-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-50 flex justify-center items-center">
+    <div class="bg-bgPanel border border-borderColor rounded-lg panel-elevated w-1/2 min-w-[480px] max-h-[75vh] flex flex-col">
+      <div class="flex justify-between items-center p-4 border-b border-borderColor">
+        <h3 class="text-textBright font-bold text-lg">Project Brief</h3>
+        <button onclick="closeProjectBrief()" class="text-textMuted hover:text-textBright">✕</button>
+      </div>
+      <pre id="brief-content" class="p-4 overflow-y-auto text-xs text-textBright whitespace-pre-wrap flex-1"></pre>
+      <div class="p-3 border-t border-borderColor flex justify-end gap-2">
+        <span id="brief-copied" class="text-accentGreen font-bold text-xs self-center"></span>
+        <button onclick="copyBrief()" class="btn-primary text-white font-bold text-xs px-3 py-1.5 rounded transition-colors">Copy</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Look Up Collaborator Modal -->
+  <div id="collaborator-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-50 flex justify-center items-center">
+    <div class="bg-bgPanel border border-borderColor rounded-lg panel-elevated w-96 p-4">
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="text-textBright font-bold">Look Up Collaborator</h3>
+        <button onclick="closeCollaboratorLookup()" class="text-textMuted hover:text-textBright">✕</button>
+      </div>
+      <input id="collaborator-input" oninput="onCollaboratorInput()" placeholder="Type a name..." class="w-full bg-inputBg border border-borderColor text-textBright px-2 py-1.5 rounded outline-none focus:border-accentBlue mb-2 text-sm">
+      <div id="collaborator-results" class="max-h-64 overflow-y-auto text-sm"></div>
+    </div>
+  </div>
+
+  <!-- Qualification Modal -->
+  <div id="qualification-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-50 flex justify-center items-center">
+    <div class="bg-bgPanel border border-borderColor rounded-lg panel-elevated w-1/2 min-w-[480px] max-h-[70vh] flex flex-col">
+      <div class="flex justify-between items-center p-4 border-b border-borderColor">
+        <h3 class="text-textBright font-bold text-lg">Qualification Checklist</h3>
+        <button onclick="closeQualification()" class="text-textMuted hover:text-textBright">✕</button>
+      </div>
+      <div id="qualification-content" class="p-4 overflow-y-auto text-sm space-y-3"></div>
+    </div>
+  </div>
+
+<script>
+const STAGES = ["1 - Lead", "2 - Discovery Call", "3 - Proposal Sent", "4 - Scope Call", "5 - Negotiation", "6 - Closed Won", "7 - Closed Lost"];
+const LEAD_COLLABORATOR_NAME = "Alex Rivera";
+
+let currentView = { mode: 'self', collaboratorIds: null, label: `👤 My Pipeline (${LEAD_COLLABORATOR_NAME})` };
+let rawProjects = [];
+let filteredProjects = [];
+let selectedProject = null;
+let dynamicSchema = null;
+let collaboratorSearchDebounce = null;
+let selectedIds = new Set();
+
+const OPTIONAL_COLUMNS = ['source', 'contract', 'proposal'];
+
+function escapeHTML(str) {
+  if (str === null || str === undefined) return '';
+  return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function fillSelect(id, options, includeBlank) {
+  const el = document.getElementById(id);
+  el.innerHTML = (includeBlank ? '<option value=""></option>' : '') + options.map(o => `<option value="${escapeHTML(o)}">${escapeHTML(o)}</option>`).join('');
+}
+
+async function fetchSchema() {
+  try {
+    const res = await fetch('/api/schema');
+    const result = await res.json();
+    if (result.status === 'success') {
+      dynamicSchema = result.data;
+      fillSelect('edit-blocker-type', dynamicSchema.scope_call_picklists.BlockerType);
+      fillSelect('edit-outcome', dynamicSchema.scope_call_picklists.Outcome);
+      fillSelect('edit-proposal-status', dynamicSchema.scope_call_picklists.ProposalStatus);
+      fillSelect('edit-call-status', dynamicSchema.scope_call_picklists.CallStatus);
+      const stageFilter = document.getElementById('filter-stage');
+      STAGES.forEach(s => stageFilter.insertAdjacentHTML('beforeend', `<option value="${s}">${s}</option>`));
+    }
+  } catch (e) {}
+  fillSelect('edit-stage', STAGES);
+  fillSelect('bulk-stage-select', STAGES);
+  restoreColumnPrefs();
+}
+
+function populateSourceFilter() {
+  const select = document.getElementById('filter-source');
+  const current = select.value;
+  const sources = [...new Set(rawProjects.map(p => p.LeadSource))].sort();
+  select.innerHTML = '<option value="All">All Sources</option>' + sources.map(s => `<option value="${escapeHTML(s)}">${escapeHTML(s)}</option>`).join('');
+  select.value = current && sources.includes(current) ? current : 'All';
+}
+
+function updateViewLabel() {
+  document.getElementById('view-label').textContent = currentView.label;
+}
+
+function setViewSelf() {
+  currentView = { mode: 'self', collaboratorIds: null, label: `👤 My Pipeline (${LEAD_COLLABORATOR_NAME})` };
+  updateViewLabel();
+  fetchData();
+}
+
+async function fetchData() {
+  const list = document.getElementById('project-list');
+  list.innerHTML = `<tr><td colspan="13" class="text-center p-6 text-accentBlue font-bold">Loading pipeline...</td></tr>`;
+  try {
+    const params = new URLSearchParams();
+    if (currentView.collaboratorIds) params.set('collaborator_ids', currentView.collaboratorIds.join(','));
+    const url = `/api/projects${params.toString() ? '?' + params.toString() : ''}`;
+    const res = await fetch(url);
+    const result = await res.json();
+    if (result.status === 'success') {
+      rawProjects = result.data;
+      selectedIds.clear();
+      updateBulkBar();
+      populateSourceFilter();
+      applyFilters();
+    } else {
+      list.innerHTML = `<tr><td colspan="13" class="text-center p-4 text-accentRed">Error: ${escapeHTML(result.message)}</td></tr>`;
+    }
+  } catch (e) {
+    list.innerHTML = `<tr><td colspan="13" class="text-center p-4 text-accentRed">Connection error.</td></tr>`;
+  }
+}
+
+function forceRefresh() { fetchData(); }
+
+function getScopeCall(project) {
+  return (project.ScopeCalls__r && project.ScopeCalls__r.records[0]) || {};
+}
+
+function applyFilters() {
+  const status = document.getElementById('filter-status').value;
+  const timeline = document.getElementById('filter-timeline').value;
+  const stage = document.getElementById('filter-stage').value;
+  const source = document.getElementById('filter-source').value;
+  const search = document.getElementById('search-input').value.trim().toLowerCase();
+  const today = new Date('2026-08-27');
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  const nextMonthStart = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+  const nextMonthEnd = new Date(today.getFullYear(), today.getMonth() + 2, 1);
+
+  filteredProjects = rawProjects.filter(p => {
+    const isClosed = p.Stage.includes('Closed');
+    if (status === 'Active' && isClosed) return false;
+    if (status === 'Closed' && !isClosed) return false;
+    if (stage !== 'All' && p.Stage !== stage) return false;
+    if (source !== 'All' && p.LeadSource !== source) return false;
+    if (timeline !== 'All Time') {
+      const delivery = new Date(p.TargetDeliveryDate);
+      if (timeline === 'Past Due' && !(delivery < today && !isClosed)) return false;
+      if (timeline === 'Delivering This Month' && !(delivery >= monthStart && delivery < nextMonthStart)) return false;
+      if (timeline === 'Delivering Next Month' && !(delivery >= nextMonthStart && delivery < nextMonthEnd)) return false;
+    }
+    if (search) {
+      const collaboratorNames = (p.Collaborators__r?.records || []).map(c => c.Collaborator.Name).join(' ');
+      const haystack = `${p.Client.Name} ${p.Name} ${p.Id} ${collaboratorNames}`.toLowerCase();
+      if (!haystack.includes(search)) return false;
+    }
+    return true;
+  });
+  document.getElementById('record-count').textContent = filteredProjects.length;
+  renderTable();
+}
+
+function riskBadge(risk) {
+  const colors = { Green: 'text-accentGreen', Yellow: 'text-amber-400', Red: 'text-accentRed' };
+  return `<span class="${colors[risk] || 'text-textMuted'} font-bold">${escapeHTML(risk || '--')}</span>`;
+}
+
+function renderTable() {
+  const list = document.getElementById('project-list');
+  if (filteredProjects.length === 0) {
+    list.innerHTML = `<tr><td colspan="13" class="text-center p-6 text-textMuted">No projects match these filters.</td></tr>`;
+    return;
+  }
+  list.innerHTML = filteredProjects.map(p => {
+    const call = getScopeCall(p);
+    const checked = selectedIds.has(p.Id) ? 'checked' : '';
+    return `
+    <tr class="border-b border-borderColor hover:bg-hoverBg cursor-pointer ${selectedProject && selectedProject.Id === p.Id ? 'bg-hoverBg' : ''}">
+      <td class="p-2" onclick="event.stopPropagation()"><input type="checkbox" ${checked} onclick="toggleRowSelection(${JSON.stringify(p.Id)}, this.checked)"></td>
+      <td class="p-2 text-textBright font-bold" onclick='selectProject(${JSON.stringify(p.Id)})'>${escapeHTML(p.Client.Name)}</td>
+      <td class="p-2" onclick='selectProject(${JSON.stringify(p.Id)})'>${escapeHTML(p.ServiceType)}</td>
+      <td class="p-2 text-right" onclick='selectProject(${JSON.stringify(p.Id)})'>$${Number(p.DealValue || 0).toLocaleString()}</td>
+      <td class="p-2 text-right text-accentGreen" onclick='selectProject(${JSON.stringify(p.Id)})'>$${Number(p.RetainerValue__c || 0).toLocaleString()}</td>
+      <td class="p-2" onclick='selectProject(${JSON.stringify(p.Id)})'>${escapeHTML(p.Stage)}</td>
+      <td class="p-2" onclick='selectProject(${JSON.stringify(p.Id)})'>${escapeHTML(p.TargetDeliveryDate)}</td>
+      <td class="p-2" onclick='selectProject(${JSON.stringify(p.Id)})'>${riskBadge(call.RiskLevel)}</td>
+      <td class="p-2" onclick='selectProject(${JSON.stringify(p.Id)})'>${escapeHTML(call.CallStatus || '--')}</td>
+      <td class="p-2 col-source hidden" onclick='selectProject(${JSON.stringify(p.Id)})'>${escapeHTML(p.LeadSource || '--')}</td>
+      <td class="p-2 col-contract hidden" onclick='selectProject(${JSON.stringify(p.Id)})'>${escapeHTML(p.ContractStatus || '--')}</td>
+      <td class="p-2 col-proposal hidden" onclick='selectProject(${JSON.stringify(p.Id)})'>${escapeHTML(call.ProposalStatus || '--')}</td>
+      <td class="p-2 text-textMuted max-w-[220px] truncate" title="${escapeHTML(p.NextStep)}" onclick='selectProject(${JSON.stringify(p.Id)})'>${escapeHTML(p.NextStep)}</td>
+    </tr>`;
+  }).join('');
+  applyColumnVisibilityToDom();
+}
+
+// --- Row selection & bulk actions ---
+function toggleRowSelection(id, checked) {
+  if (checked) selectedIds.add(id); else selectedIds.delete(id);
+  updateBulkBar();
+}
+function toggleSelectAll(checkbox) {
+  if (checkbox.checked) filteredProjects.forEach(p => selectedIds.add(p.Id));
+  else filteredProjects.forEach(p => selectedIds.delete(p.Id));
+  renderTable();
+  updateBulkBar();
+}
+function clearSelection() {
+  selectedIds.clear();
+  document.getElementById('select-all-checkbox').checked = false;
+  renderTable();
+  updateBulkBar();
+}
+function updateBulkBar() {
+  const bar = document.getElementById('bulk-action-bar');
+  const count = selectedIds.size;
+  document.getElementById('bulk-selected-count').textContent = count;
+  bar.classList.toggle('hidden', count === 0);
+  bar.classList.toggle('flex', count > 0);
+}
+async function applyBulkStage() {
+  const stage = document.getElementById('bulk-stage-select').value;
+  const ids = [...selectedIds];
+  if (ids.length === 0) return;
+  try {
+    const res = await fetch('/api/projects/bulk-stage', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project_ids: ids, stage }),
+    });
+    const result = await res.json();
+    if (result.status === 'success') {
+      rawProjects.forEach(p => { if (selectedIds.has(p.Id)) p.Stage = stage; });
+      clearSelection();
+      applyFilters();
+    }
+  } catch (e) {}
+}
+
+// --- Column settings ---
+function applyColumnVisibilityToDom() {
+  const prefs = JSON.parse(localStorage.getItem('scopeflow_columns') || '{}');
+  OPTIONAL_COLUMNS.forEach(col => {
+    const visible = !!prefs[col];
+    document.querySelectorAll(`.col-${col}`).forEach(el => el.classList.toggle('hidden', !visible));
+  });
+}
+function restoreColumnPrefs() {
+  const prefs = JSON.parse(localStorage.getItem('scopeflow_columns') || '{}');
+  OPTIONAL_COLUMNS.forEach(col => {
+    document.getElementById(`col-toggle-${col}`).checked = !!prefs[col];
+  });
+}
+function toggleColumn(col, visible) {
+  const prefs = JSON.parse(localStorage.getItem('scopeflow_columns') || '{}');
+  prefs[col] = visible;
+  localStorage.setItem('scopeflow_columns', JSON.stringify(prefs));
+  applyColumnVisibilityToDom();
+}
+function openColumnSettings() { document.getElementById('column-modal').classList.remove('hidden'); }
+function closeColumnSettings() { document.getElementById('column-modal').classList.add('hidden'); }
+
+// --- Project Brief ---
+function openProjectBrief() {
+  if (!selectedProject) return;
+  const p = selectedProject;
+  const call = getScopeCall(p);
+  const collaborators = (p.Collaborators__r?.records || []).map(c => c.Collaborator.Name).join(', ') || '--';
+  const brief = `PROJECT BRIEF
+==============================
+Client: ${p.Client.Name}
+Service Type: ${p.ServiceType}
+Stage: ${p.Stage}
+Deal Value: $${Number(p.DealValue || 0).toLocaleString()}
+Retainer Value (Monthly): $${Number(p.RetainerValue__c || 0).toLocaleString()}
+Target Start: ${p.TargetStartDate || '--'}
+Target Delivery: ${p.TargetDeliveryDate || '--'}
+Lead Source: ${p.LeadSource || '--'}
+Contract Status: ${p.ContractStatus || '--'}
+Collaborators: ${collaborators}
+
+Next Step:
+${p.NextStep || '--'}
+
+SCOPE CALL
+------------------------------
+Status: ${call.CallStatus || '--'}
+Risk Level: ${call.RiskLevel || '--'}
+Blocker: ${call.BlockerType || '--'}
+Outcome: ${call.Outcome || '--'}
+Proposal Status: ${call.ProposalStatus || '--'}
+Notes: ${call.CallNotes || '--'}
+`;
+  document.getElementById('brief-content').textContent = brief;
+  document.getElementById('brief-copied').textContent = '';
+  document.getElementById('brief-modal').classList.remove('hidden');
+}
+function closeProjectBrief() { document.getElementById('brief-modal').classList.add('hidden'); }
+function copyBrief() {
+  navigator.clipboard.writeText(document.getElementById('brief-content').textContent).then(() => {
+    document.getElementById('brief-copied').textContent = 'Copied!';
+  });
+}
+
+// --- Closed Won Brief & Stage Breakdown (interactive, click-to-drill charts) ---
+const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+let wonBriefChartInstance = null;
+let stageBreakdownChartInstance = null;
+
+function projectSummaryRow(p) {
+  const call = getScopeCall(p);
+  return `
+    <div class="flex justify-between items-start border-b border-borderColor py-1.5">
+      <div>
+        <div class="text-textBright font-bold">${escapeHTML(p.Client.Name)}</div>
+        <div class="text-textMuted">${escapeHTML(p.ServiceType)} · Stage: ${escapeHTML(p.Stage)} · Risk: ${escapeHTML(call.RiskLevel || '--')}</div>
+      </div>
+      <div class="text-accentGreen font-bold shrink-0 ml-2">${money(p.DealValue)}</div>
+    </div>`;
+}
+
+function openClosedWonBrief() {
+  const wonProjects = rawProjects.filter(p => p.Stage === '6 - Closed Won');
+  const years = [...new Set(wonProjects.map(p => (p.TargetDeliveryDate || '').slice(0, 4)))].filter(Boolean).sort();
+  const yearSelect = document.getElementById('won-brief-year');
+  yearSelect.innerHTML = '<option value="All">All Years</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
+  document.getElementById('won-brief-scope').textContent = currentView.label;
+  document.getElementById('won-brief-modal').classList.remove('hidden');
+  renderWonBriefChart();
+}
+function closeWonBrief() {
+  document.getElementById('won-brief-modal').classList.add('hidden');
+  if (wonBriefChartInstance) { wonBriefChartInstance.destroy(); wonBriefChartInstance = null; }
+}
+
+function renderWonBriefChart() {
+  const year = document.getElementById('won-brief-year').value;
+  let wonProjects = rawProjects.filter(p => p.Stage === '6 - Closed Won');
+  if (year !== 'All') wonProjects = wonProjects.filter(p => (p.TargetDeliveryDate || '').startsWith(year));
+
+  const total = wonProjects.reduce((sum, p) => sum + Number(p.DealValue || 0), 0);
+  document.getElementById('won-brief-total').textContent = money(total);
+  document.getElementById('won-brief-count').textContent = `${wonProjects.length} Closed Won project${wonProjects.length === 1 ? '' : 's'}`;
+
+  const byMonth = Array(12).fill(0);
+  const projectsByMonth = Array.from({ length: 12 }, () => []);
+  wonProjects.forEach(p => {
+    const d = p.TargetDeliveryDate;
+    if (!d) return;
+    const m = parseInt(d.slice(5, 7), 10) - 1;
+    if (m >= 0 && m < 12) { byMonth[m]++; projectsByMonth[m].push(p); }
+  });
+
+  document.getElementById('won-brief-details').innerHTML = `<p class="text-textMuted">Click a bar above to see the projects closed that month.</p>`;
+  document.getElementById('won-brief-hint').textContent = '(click a bar above)';
+
+  if (wonBriefChartInstance) wonBriefChartInstance.destroy();
+  const ctx = document.getElementById('won-brief-chart').getContext('2d');
+  wonBriefChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: MONTH_LABELS, datasets: [{ data: byMonth, backgroundColor: '#3B82F6', borderRadius: 3 }] },
+    options: {
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => `Closed Won: ${ctx.raw}` } } },
+      scales: {
+        y: { beginAtZero: true, ticks: { color: '#B8AC9A', precision: 0 }, grid: { color: '#3D362C' } },
+        x: { ticks: { color: '#B8AC9A' }, grid: { display: false } },
+      },
+      onClick: (evt, elements) => {
+        if (!elements.length) return;
+        const idx = elements[0].index;
+        const monthProjects = projectsByMonth[idx];
+        document.getElementById('won-brief-hint').textContent = `— ${MONTH_LABELS[idx]}`;
+        document.getElementById('won-brief-details').innerHTML = monthProjects.length
+          ? monthProjects.map(projectSummaryRow).join('')
+          : `<p class="text-textMuted">No projects closed in ${MONTH_LABELS[idx]}.</p>`;
+      },
+    },
+  });
+}
+
+function openStageBreakdown() {
+  document.getElementById('stage-breakdown-scope').textContent = currentView.label;
+  document.getElementById('stage-breakdown-modal').classList.remove('hidden');
+  renderStageBreakdownChart();
+}
+function closeStageBreakdown() {
+  document.getElementById('stage-breakdown-modal').classList.add('hidden');
+  if (stageBreakdownChartInstance) { stageBreakdownChartInstance.destroy(); stageBreakdownChartInstance = null; }
+}
+
+function renderStageBreakdownChart() {
+  const view = document.getElementById('stage-breakdown-view').value;
+  let scoped = rawProjects;
+  if (view === 'Open') scoped = scoped.filter(p => !p.Stage.includes('Closed'));
+  else if (view !== 'All') scoped = scoped.filter(p => p.Stage === view);
+
+  const total = scoped.reduce((sum, p) => sum + Number(p.DealValue || 0), 0);
+  document.getElementById('stage-breakdown-total').textContent = money(total);
+  document.getElementById('stage-breakdown-count').textContent = `${scoped.length} project${scoped.length === 1 ? '' : 's'}`;
+
+  const activeStages = STAGES.filter(s => scoped.some(p => p.Stage === s));
+  const counts = activeStages.map(s => scoped.filter(p => p.Stage === s).length);
+  const projectsByStage = activeStages.map(s => scoped.filter(p => p.Stage === s));
+
+  document.getElementById('stage-breakdown-details').innerHTML = `<p class="text-textMuted">Click a bar above to see the projects in that stage.</p>`;
+  document.getElementById('stage-breakdown-hint').textContent = '(click a bar above)';
+
+  if (stageBreakdownChartInstance) stageBreakdownChartInstance.destroy();
+  const ctx = document.getElementById('stage-breakdown-chart').getContext('2d');
+  stageBreakdownChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: activeStages, datasets: [{ data: counts, backgroundColor: '#3B82F6', borderRadius: 3 }] },
+    options: {
+      indexAxis: activeStages.length <= 3 ? 'x' : 'y',
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => `Projects: ${ctx.raw}` } } },
+      scales: {
+        x: { beginAtZero: true, ticks: { color: '#B8AC9A', precision: 0 }, grid: { color: '#3D362C' } },
+        y: { ticks: { color: '#B8AC9A' }, grid: { display: false } },
+      },
+      onClick: (evt, elements) => {
+        if (!elements.length) return;
+        const idx = elements[0].index;
+        const stageProjects = projectsByStage[idx];
+        document.getElementById('stage-breakdown-hint').textContent = `— ${activeStages[idx]}`;
+        document.getElementById('stage-breakdown-details').innerHTML = stageProjects.length
+          ? stageProjects.map(projectSummaryRow).join('')
+          : `<p class="text-textMuted">No projects in this stage.</p>`;
+      },
+    },
+  });
+}
+
+// --- Pipeline Analytics ---
+function money(v) { return '$' + Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 0 }); }
+
+async function openAnalytics() {
+  const modal = document.getElementById('analytics-modal');
+  const content = document.getElementById('analytics-content');
+  modal.classList.remove('hidden');
+  content.innerHTML = `<p class="text-textMuted text-center mt-8">Crunching the numbers...</p>`;
+  try {
+    const res = await fetch('/api/analytics');
+    const result = await res.json();
+    if (result.status !== 'success') { content.innerHTML = `<p class="text-accentRed">${escapeHTML(result.message)}</p>`; return; }
+    content.innerHTML = renderAnalytics(result.data);
+  } catch (e) {
+    content.innerHTML = `<p class="text-accentRed">Connection error.</p>`;
+  }
+}
+function closeAnalytics() { document.getElementById('analytics-modal').classList.add('hidden'); }
+
+function renderAnalytics(d) {
+  const statCard = (label, value, colorClass) => `
+    <div class="bg-inputBg border border-borderColor rounded p-3">
+      <div class="text-textMuted text-xxs uppercase mb-1">${label}</div>
+      <div class="${colorClass || 'text-textBright'} font-bold text-xl">${value}</div>
+    </div>`;
+
+  const riskColors = { Green: 'bg-accentGreen', Yellow: 'bg-amber-400', Red: 'bg-accentRed' };
+  const totalOpenRisk = d.risk_breakdown.Green + d.risk_breakdown.Yellow + d.risk_breakdown.Red;
+  const riskBar = Object.entries(d.risk_breakdown).map(([level, count]) => {
+    const pct = totalOpenRisk ? (count / totalOpenRisk * 100) : 0;
+    return `<div class="${riskColors[level]}" style="width:${pct}%" title="${level}: ${count}"></div>`;
+  }).join('');
+
+  const sourceRows = Object.entries(d.source_stats)
+    .sort((a, b) => (b[1].won + b[1].lost) - (a[1].won + a[1].lost))
+    .map(([source, s]) => `
+      <tr class="border-b border-borderColor">
+        <td class="p-2 text-textBright">${escapeHTML(source)}</td>
+        <td class="p-2 text-right">${s.won}</td>
+        <td class="p-2 text-right">${s.lost}</td>
+        <td class="p-2 text-right font-bold ${s.rate_pct >= 50 ? 'text-accentGreen' : 'text-amber-400'}">${s.rate_pct}%</td>
+      </tr>`).join('');
+
+  const lostReasonRows = d.top_lost_reasons.map(r => `
+    <div class="flex justify-between py-1 border-b border-borderColor">
+      <span>${escapeHTML(r.reason)}</span><span class="text-textBright font-bold">${r.count}</span>
+    </div>`).join('') || '<p class="text-textMuted">No closed-lost projects yet.</p>';
+
+  const qualRows = d.qual_signal_rates.map(q => `
+    <div class="mb-2">
+      <div class="flex justify-between text-xs mb-1"><span>${escapeHTML(q.label)}</span></div>
+      <div class="flex items-center gap-2 text-xxs">
+        <span class="w-10 text-accentGreen">Won</span>
+        <div class="flex-1 bg-bgDark rounded h-2 overflow-hidden"><div class="bg-accentGreen h-2" style="width:${q.won_fill_pct}%"></div></div>
+        <span class="w-10 text-right">${q.won_fill_pct}%</span>
+      </div>
+      <div class="flex items-center gap-2 text-xxs mt-0.5">
+        <span class="w-10 text-accentRed">Lost</span>
+        <div class="flex-1 bg-bgDark rounded h-2 overflow-hidden"><div class="bg-accentRed h-2" style="width:${q.lost_fill_pct}%"></div></div>
+        <span class="w-10 text-right">${q.lost_fill_pct}%</span>
+      </div>
+    </div>`).join('');
+
+  return `
+    <div class="grid grid-cols-4 gap-3 mb-4">
+      ${statCard('Win Rate', d.win_rate_pct + '%', 'text-accentBlue')}
+      ${statCard('Won Value (Total)', money(d.total_won_value), 'text-accentGreen')}
+      ${statCard('Avg Won Deal', money(d.avg_won_deal_size))}
+      ${statCard('Weighted Pipeline', money(d.weighted_pipeline_value), 'text-accentBlue')}
+    </div>
+    <div class="grid grid-cols-4 gap-3 mb-4 text-xs text-textMuted">
+      <div>${d.total_projects} total projects</div>
+      <div>${d.open_count} open</div>
+      <div>${d.closed_won_count} closed won</div>
+      <div>${d.closed_lost_count} closed lost</div>
+    </div>
+
+    <div class="mb-4">
+      <h4 class="text-textBright font-bold mb-2">Open Pipeline Risk Mix</h4>
+      <div class="flex h-4 rounded overflow-hidden border border-borderColor">${riskBar || '<div class=\"bg-borderColor w-full\"></div>'}</div>
+      <div class="flex gap-4 text-xxs mt-1">
+        <span class="text-accentGreen">■ Green ${d.risk_breakdown.Green}</span>
+        <span class="text-amber-400">■ Yellow ${d.risk_breakdown.Yellow}</span>
+        <span class="text-accentRed">■ Red ${d.risk_breakdown.Red}</span>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <h4 class="text-textBright font-bold mb-2">Win Rate by Lead Source</h4>
+        <table class="w-full text-xs">
+          <thead><tr class="text-textMuted"><th class="p-2 text-left">Source</th><th class="p-2 text-right">Won</th><th class="p-2 text-right">Lost</th><th class="p-2 text-right">Rate</th></tr></thead>
+          <tbody>${sourceRows}</tbody>
+        </table>
+      </div>
+      <div>
+        <h4 class="text-textBright font-bold mb-2">Top Closed-Lost Reasons</h4>
+        ${lostReasonRows}
+      </div>
+    </div>
+
+    <div class="mt-4">
+      <h4 class="text-textBright font-bold mb-2">Qualification Signals: Won vs Lost</h4>
+      <p class="text-textMuted text-xxs mb-2">How often each qualification field was actually filled in on deals that closed won vs. closed lost - a rough signal for which checklist items matter most.</p>
+      ${qualRows}
+    </div>
+  `;
+}
+
+function selectProject(id) {
+  selectedProject = filteredProjects.find(p => p.Id === id) || rawProjects.find(p => p.Id === id);
+  if (!selectedProject) return;
+  const call = getScopeCall(selectedProject);
+
+  document.getElementById('panel-title').textContent = `${selectedProject.Client.Name} — ${selectedProject.ServiceType}`;
+  document.getElementById('view-in-sf-link').href = `/mock-salesforce/opportunity/${selectedProject.Id}`;
+  document.getElementById('edit-stage').value = selectedProject.Stage;
+  document.getElementById('edit-contract-status').value = selectedProject.ContractStatus || 'Not Sent';
+  document.getElementById('edit-delivery-date').value = selectedProject.TargetDeliveryDate || '';
+  document.getElementById('edit-next-step').value = selectedProject.NextStep || '';
+  document.getElementById('edit-call-status').value = call.CallStatus || 'Not Scheduled';
+  document.getElementById('edit-risk-level').value = call.RiskLevel || 'Green';
+  document.getElementById('edit-blocker-type').value = call.BlockerType || 'None';
+  document.getElementById('edit-outcome').value = call.Outcome || 'N/A - Not Yet Held';
+  document.getElementById('edit-proposal-status').value = call.ProposalStatus || 'Draft';
+  document.getElementById('edit-call-notes').value = call.CallNotes || '';
+  document.getElementById('save-status').textContent = '';
+
+  document.getElementById('side-panel').classList.remove('hidden');
+  renderTable();
+}
+
+function closePanel() {
+  selectedProject = null;
+  document.getElementById('side-panel').classList.add('hidden');
+  renderTable();
+}
+
+async function saveCurrent() {
+  if (!selectedProject) return;
+  const call = getScopeCall(selectedProject);
+  const payload = {
+    project_id: selectedProject.Id,
+    scope_call_id: call.Id || null,
+    project_payload: {
+      Stage: document.getElementById('edit-stage').value,
+      ContractStatus: document.getElementById('edit-contract-status').value,
+      TargetDeliveryDate: document.getElementById('edit-delivery-date').value,
+      NextStep: document.getElementById('edit-next-step').value,
+    },
+    scope_call_payload: {
+      CallStatus: document.getElementById('edit-call-status').value,
+      RiskLevel: document.getElementById('edit-risk-level').value,
+      BlockerType: document.getElementById('edit-blocker-type').value,
+      Outcome: document.getElementById('edit-outcome').value,
+      ProposalStatus: document.getElementById('edit-proposal-status').value,
+      CallNotes: document.getElementById('edit-call-notes').value,
+    },
+  };
+  try {
+    const res = await fetch('/api/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const result = await res.json();
+    if (result.status === 'success') {
+      document.getElementById('save-status').textContent = 'Saved!';
+      Object.assign(selectedProject, payload.project_payload);
+      if (call.Id) Object.assign(call, payload.scope_call_payload);
+      renderTable();
+    } else {
+      document.getElementById('save-status').textContent = 'Error: ' + result.message;
+    }
+  } catch (e) {
+    document.getElementById('save-status').textContent = 'Connection error.';
+  }
+}
+
+// --- Look Up Collaborator ---
+async function getRecommendedCollaboratorsApi() {
+  try {
+    const res = await fetch(`/api/collaborators/search?recommend=true`);
+    const result = await res.json();
+    return result.status === 'success' ? result.data : [];
+  } catch (e) { return []; }
+}
+async function searchCollaboratorsApi(query) {
+  if (!query || query.trim().length < 2) return [];
+  try {
+    const res = await fetch(`/api/collaborators/search?q=${encodeURIComponent(query.trim())}`);
+    const result = await res.json();
+    return result.status === 'success' ? result.data : [];
+  } catch (e) { return []; }
+}
+function renderCollaboratorResults(results, heading) {
+  const container = document.getElementById('collaborator-results');
+  if (results.length === 0) { container.innerHTML = heading ? '' : `<div class="text-textMuted p-2">No matching collaborators found.</div>`; return; }
+  const rows = results.map(u => `
+    <div onclick='selectCollaboratorView(${JSON.stringify(u).replace(/'/g, "&#39;")})' class="flex justify-between items-center p-2 rounded hover:bg-hoverBg cursor-pointer">
+      <span class="text-textBright font-bold">${escapeHTML(u.Name)}</span>
+      <span class="text-textMuted">${escapeHTML(u.Email || '')}</span>
+    </div>`).join('');
+  container.innerHTML = (heading ? `<div class="text-textMuted px-2 pb-1">${heading}</div>` : '') + rows;
+}
+function openCollaboratorLookup() {
+  document.getElementById('collaborator-input').value = '';
+  document.getElementById('collaborator-results').innerHTML = `<div class="text-textMuted p-2">Loading suggestions...</div>`;
+  document.getElementById('collaborator-modal').classList.remove('hidden');
+  document.getElementById('collaborator-input').focus();
+  getRecommendedCollaboratorsApi().then(recs => renderCollaboratorResults(recs.slice(0, 3), 'Suggested:'));
+}
+function closeCollaboratorLookup() { document.getElementById('collaborator-modal').classList.add('hidden'); }
+function onCollaboratorInput() {
+  const query = document.getElementById('collaborator-input').value;
+  clearTimeout(collaboratorSearchDebounce);
+  collaboratorSearchDebounce = setTimeout(async () => {
+    if (!query || query.trim().length === 0) {
+      const recs = await getRecommendedCollaboratorsApi();
+      renderCollaboratorResults(recs.slice(0, 3), 'Suggested:');
+      return;
+    }
+    if (query.trim().length < 2) { document.getElementById('collaborator-results').innerHTML = ''; return; }
+    renderCollaboratorResults(await searchCollaboratorsApi(query));
+  }, 300);
+}
+function selectCollaboratorView(u) {
+  currentView = { mode: 'collaborator', collaboratorIds: [u.Id], label: `👤 Viewing: ${u.Name}` };
+  updateViewLabel();
+  closeCollaboratorLookup();
+  closePanel();
+  fetchData();
+}
+
+// --- Qualification Modal ---
+async function openQualification() {
+  if (!selectedProject) return;
+  document.getElementById('qualification-modal').classList.remove('hidden');
+  const content = document.getElementById('qualification-content');
+  content.innerHTML = `<p class="text-textMuted">Loading...</p>`;
+  try {
+    const res = await fetch(`/api/qualification/${selectedProject.Id}`);
+    const result = await res.json();
+    if (result.status === 'success' && result.data.length > 0) {
+      content.innerHTML = result.data.map(f => `
+        <div class="border-b border-borderColor pb-2">
+          <div class="text-accentBlue font-bold">${escapeHTML(f.label)}</div>
+          <div class="text-textBright">${escapeHTML(f.value)}</div>
+        </div>`).join('');
+    } else {
+      content.innerHTML = `<p class="text-textMuted text-center mt-6">No qualification notes captured yet for this project.</p>`;
+    }
+  } catch (e) {
+    content.innerHTML = `<p class="text-accentRed">Connection error.</p>`;
+  }
+}
+function closeQualification() { document.getElementById('qualification-modal').classList.add('hidden'); }
+
+// --- Export (CSV / JSON / Markdown) ---
+function toggleExportMenu() {
+  document.getElementById('export-menu').classList.toggle('hidden');
+}
+function closeExportMenu() {
+  document.getElementById('export-menu').classList.add('hidden');
+}
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('export-menu');
+  if (!menu) return;
+  if (!menu.classList.contains('hidden') && !e.target.closest('#export-menu') && e.target.getAttribute('onclick') !== 'toggleExportMenu()') {
+    closeExportMenu();
+  }
+});
+
+function exportRows() {
+  const cols = ['Client', 'ServiceType', 'DealValue', 'RetainerValue', 'Stage', 'TargetDeliveryDate', 'RiskLevel', 'CallStatus', 'NextStep'];
+  const rows = filteredProjects.map(p => {
+    const call = getScopeCall(p);
+    return [p.Client.Name, p.ServiceType, p.DealValue, p.RetainerValue__c, p.Stage, p.TargetDeliveryDate, call.RiskLevel || '', call.CallStatus || '', p.NextStep];
+  });
+  return { cols, rows };
+}
+function downloadBlob(content, mimeType, filename) {
+  const blob = new Blob([content], { type: mimeType });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+}
+function exportAs(format) {
+  closeExportMenu();
+  const { cols, rows } = exportRows();
+  const dateStamp = new Date().toISOString().slice(0, 10);
+
+  if (format === 'csv') {
+    const csv = [cols.join(','), ...rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
+    downloadBlob(csv, 'text/csv', `ScopeFlow_Export_${dateStamp}.csv`);
+  } else if (format === 'json') {
+    const objects = rows.map(r => Object.fromEntries(cols.map((c, i) => [c, r[i]])));
+    downloadBlob(JSON.stringify(objects, null, 2), 'application/json', `ScopeFlow_Export_${dateStamp}.json`);
+  } else if (format === 'markdown') {
+    const header = `| ${cols.join(' | ')} |`;
+    const divider = `| ${cols.map(() => '---').join(' | ')} |`;
+    const body = rows.map(r => `| ${r.map(v => String(v ?? '').replace(/\|/g, '\\|')).join(' | ')} |`).join('\n');
+    downloadBlob([header, divider, body].join('\n'), 'text/markdown', `ScopeFlow_Export_${dateStamp}.md`);
+  }
+}
+
+window.addEventListener('beforeunload', () => {
+  fetch('/api/shutdown', { method: 'POST' }).catch(() => {});
+});
+
+// --- Mock CRM connect gate ---
+function connectToCrm() {
+  const btn = document.getElementById('sf-connect-btn');
+  btn.disabled = true;
+  btn.textContent = 'Connecting...';
+  setTimeout(() => {
+    localStorage.setItem('scopeflow_crm_connected', 'true');
+    document.getElementById('sf-login-gate').classList.add('hidden');
+    startApp();
+  }, 900);
+}
+function disconnectFromCrm() {
+  localStorage.removeItem('scopeflow_crm_connected');
+  location.reload();
+}
+function startApp() {
+  updateViewLabel();
+  fetchSchema().then(fetchData);
+}
+
+updateViewLabel();
+if (localStorage.getItem('scopeflow_crm_connected') === 'true') {
+  document.getElementById('sf-login-gate').classList.add('hidden');
+  startApp();
+}
+</script>
+</body>
+</html>
