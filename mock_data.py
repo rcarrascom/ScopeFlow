@@ -6,37 +6,37 @@ MOCK_COLLABORATORS = _json.loads(r'''
   {
     "Id": "usr000000000000001",
     "Name": "Alex Rivera",
-    "Email": "alex.rivera@scopeflow-demo.com",
+    "Email": "alex.rivera@scopion-demo.com",
     "_role": "lead"
   },
   {
     "Id": "usr000000000000002",
     "Name": "Jordan Blake",
-    "Email": "jordan.blake@scopeflow-demo.com",
+    "Email": "jordan.blake@scopion-demo.com",
     "_role": "collaborator"
   },
   {
     "Id": "usr000000000000003",
     "Name": "Sami Okafor",
-    "Email": "sami.okafor@scopeflow-demo.com",
+    "Email": "sami.okafor@scopion-demo.com",
     "_role": "collaborator"
   },
   {
     "Id": "usr000000000000004",
     "Name": "Priya Desai",
-    "Email": "priya.desai@scopeflow-demo.com",
+    "Email": "priya.desai@scopion-demo.com",
     "_role": "collaborator"
   },
   {
     "Id": "usr000000000000005",
     "Name": "Tomas Lindqvist",
-    "Email": "tomas.lindqvist@scopeflow-demo.com",
+    "Email": "tomas.lindqvist@scopion-demo.com",
     "_role": "collaborator"
   },
   {
     "Id": "usr000000000000006",
     "Name": "Wren Castillo",
-    "Email": "wren.castillo@scopeflow-demo.com",
+    "Email": "wren.castillo@scopion-demo.com",
     "_role": "collaborator"
   }
 ]

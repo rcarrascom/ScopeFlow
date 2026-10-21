@@ -43,7 +43,7 @@ SCHEMA_CACHE = {
 
 
 @app.get("/")
-@app.get("/ScopeFlow")
+@app.get("/Scopion")
 async def serve_workspace(request: Request):
     response = templates.TemplateResponse(request=request, name="index.html", context={})
     response.headers["Cache-Control"] = "no-store"
