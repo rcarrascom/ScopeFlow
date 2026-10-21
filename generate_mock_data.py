@@ -25,14 +25,14 @@ def _fake_person_id(n):
 
 MOCK_COLLABORATORS.append({
     "Id": _fake_person_id(_uid), "Name": LEAD_NAME,
-    "Email": LEAD_NAME.lower().replace(" ", ".") + "@scopeflow-demo.com",
+    "Email": LEAD_NAME.lower().replace(" ", ".") + "@scopion-demo.com",
     "_role": "lead",
 })
 _uid += 1
 for name in COLLABORATOR_NAMES:
     MOCK_COLLABORATORS.append({
         "Id": _fake_person_id(_uid), "Name": name,
-        "Email": name.lower().replace(" ", ".") + "@scopeflow-demo.com",
+        "Email": name.lower().replace(" ", ".") + "@scopion-demo.com",
         "_role": "collaborator",
     })
     _uid += 1

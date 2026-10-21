@@ -1,4 +1,4 @@
-# ScopeFlow
+# Scopion
 
 A pipeline dashboard for freelancers and consultants: track client projects
 from lead to close, run a lightweight scope-call/technical-validation step
@@ -34,12 +34,12 @@ account required.
 ## Running it
 
 ```bash
-./ScopeFlow.command
+./Scopion.command
 ```
 
 Creates a virtual environment on first run, installs dependencies (`fastapi`,
 `uvicorn`, `jinja2`, `pydantic`), and opens the app at
-`http://127.0.0.1:8004/ScopeFlow`.
+`http://127.0.0.1:8004/Scopion`.
 
 To regenerate the sample dataset:
 
