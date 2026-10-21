@@ -1,6 +1,6 @@
 # Scopion
 
-A pipeline dashboard for freelancers and consultants that connects to your
+A pipeline dashboard for freelancers, companies and consultants that connects to your
 CRM and does the housekeeping you'd otherwise have to do by hand: surfacing
 which deals are at risk, which ones are missing qualification info, and
 which ones need a follow-up before they go cold - all from one view that
