@@ -1,9 +1,14 @@
 # Scopion
 
-A pipeline dashboard for freelancers and consultants: track client projects
-from lead to close, run a lightweight scope-call/technical-validation step
-before you commit to the work, and get real analytics on what's actually
-winning you business.
+A pipeline dashboard for freelancers and consultants that connects to your
+CRM and does the housekeeping you'd otherwise have to do by hand: surfacing
+which deals are at risk, which ones are missing qualification info, and
+which ones need a follow-up before they go cold - all from one view that
+stays in sync with where your pipeline actually stands.
+
+Alongside that, it gives you real analytics on what's actually winning you
+business - win rate by lead source, which qualification signals correlate
+with closing deals, and where deals are stalling before they're won or lost.
 
 Built with FastAPI + vanilla JS - no build step, no external database, no
 account required.
